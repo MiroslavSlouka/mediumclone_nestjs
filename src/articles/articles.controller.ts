@@ -16,14 +16,21 @@ import {
 } from '@nestjs/common';
 import { DeleteResult } from 'typeorm';
 import { ArticlesService } from './articles.service';
+import { CommentsService } from './comments.service';
 import { CreateArticleDto } from './dto/createArticle.dto';
+import { CreateCommentDto } from './dto/createComment.dto';
 import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { IArticleResponse } from './types/articleResponse.interface';
 import { IArticlesResponse } from './types/articlesResponse.interface';
+import { ICommentResponse } from './types/commentResponse.interface';
+import { ICommentsResponse } from './types/commentsResponse.interface';
 
 @Controller('articles')
 export class ArticlesController {
-  constructor(private readonly articleService: ArticlesService) {}
+  constructor(
+    private readonly articleService: ArticlesService,
+    private readonly commentService: CommentsService,
+  ) {}
 
   @Get()
   async findAll(
@@ -110,5 +117,37 @@ export class ArticlesController {
       currentUserId,
     );
     return this.articleService.buildArticleResponse(article);
+  }
+
+  @Get('/:slug/comments')
+  async getCommentsForArticle(
+    @Param('slug') slug: string,
+  ): Promise<ICommentsResponse> {
+    return await this.commentService.getComments(slug);
+  }
+
+  @Post('/:slug/comments')
+  @UseGuards(AuthGuard)
+  async createComment(
+    @User() currentUser: UserEntity,
+    @Body('comment') createCommentDto: CreateCommentDto,
+    @Param('slug') slug: string,
+  ): Promise<ICommentResponse> {
+    const comment = await this.commentService.createComment(
+      currentUser,
+      slug,
+      createCommentDto,
+    );
+    return this.commentService.buildCommentResponse(comment);
+  }
+
+  @Delete('/:slug/comments/:commentId')
+  @UseGuards()
+  async deleteComment(
+    @User('id') currentUserId: number,
+    @Param('slug') slug: string,
+    @Param('commentId') commentId: number,
+  ): Promise<void> {
+    await this.commentService.deleteComment(commentId, slug, currentUserId);
   }
 }
